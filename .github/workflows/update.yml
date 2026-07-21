@@ -21,6 +21,7 @@ jobs:
       - name: 抓取全部数据(纯标准库,无需装依赖)
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GEOSCOPE_API_KEY: ${{ secrets.GEOSCOPE_API_KEY }}
         run: python3 scripts/fetch_all.py
 
       - name: 提交数据更新
