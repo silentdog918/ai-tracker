@@ -126,6 +126,7 @@
     <a href="#tokens">Token 景气度</a>
     <a href="#sdk">开发者生态</a>
     <a href="#quotes">核心标的</a>
+    <a href="#subs">订阅研报</a>
     <a href="#news">产业链新闻</a>
     <a href="#podcasts">播客</a>
   </nav>
@@ -172,6 +173,15 @@
       <h2>AI 核心标的 · EOD 行情</h2>
       <div class="sub" id="quotesSub">日更收盘价(非实时)· 红涨绿跌 · 60 日走势</div>
       <div id="quotesBox"></div>
+    </div>
+  </section>
+
+  <section id="subs">
+    <div class="card">
+      <h2>订阅研报 · GeoScope</h2>
+      <div class="sub" id="subsSub">FundaAI / Capital Wars / SemiAnalysis / Citrini Research 最新文章 · <b>点标题在 Obsidian 打开已同步的笔记</b>(本机)</div>
+      <div class="chips" id="subsChips"></div>
+      <div id="subsBox"></div>
     </div>
   </section>
 
@@ -514,6 +524,39 @@ function renderQuotes(qd) {
   if (asof) $("quotesSub").innerHTML = `截至 <b>${esc(asof)}</b>(EOD 收盘,非实时)· 红涨绿跌 · 60 日走势`;
 }
 
+function renderSubs(sd) {
+  const box = $("subsBox"), chipsBox = $("subsChips");
+  if (!sd) { box.innerHTML = '<div class="empty">订阅研报数据未抓到</div>'; return; }
+  if (!sd.items || !sd.items.length) {
+    box.innerHTML = `<div class="hint">此板块需要 GeoScope 的 Key(仓库 Secrets 里加
+      <code>GEOSCOPE_API_KEY</code>,详见 README)。接入后每天自动列出四个专区的最新文章,
+      点标题直达 Obsidian 里同步好的笔记。</div>`;
+    return;
+  }
+  if (sd.stale) {
+    $("subsSub").innerHTML += ' · <span style="color:var(--muted)">⚠ 当前为上次成功抓取的存档</span>';
+  }
+  const pubs = sd.publishers || [...new Set(sd.items.map(i => i.pub))];
+  const colorOf = p => catColor(pubs.indexOf(p));
+  let active = "全部";
+  const draw = () => {
+    const items = sd.items.filter(i => active === "全部" || i.pub === active);
+    box.innerHTML = items.map(i =>
+      `<div class="item">
+        <a class="t" href="${esc(i.obsidian || "#")}" title="在 Obsidian 中打开(需在装有该库的电脑上)">${esc(i.title)}</a>
+        <div class="meta">${badge(i.pub, colorOf(i.pub))}${esc(i.date || "")}</div>
+      </div>`).join("") || '<div class="empty">该专区暂无</div>';
+  };
+  chipsBox.innerHTML = ["全部", ...pubs].map(c =>
+    `<button data-c="${esc(c)}" class="${c === "全部" ? "on" : ""}">${esc(c)}</button>`).join("");
+  chipsBox.querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
+    active = b.dataset.c;
+    chipsBox.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+    draw();
+  }));
+  draw();
+}
+
 function renderNews(nd) {
   const box = $("newsBox"), chipsBox = $("newsChips");
   if (!nd || !nd.items || !nd.items.length) { box.innerHTML = '<div class="empty">新闻未抓到</div>'; return; }
@@ -561,7 +604,7 @@ function renderFoot(meta) {
 /* ================= 入口 ================= */
 async function loadData() {
   if (window.__DATA__) return window.__DATA__;
-  const names = ["meta", "openrouter", "downloads", "news", "quotes", "podcasts"];
+  const names = ["meta", "openrouter", "downloads", "news", "quotes", "podcasts", "subscriptions"];
   const out = {};
   await Promise.all(names.map(async n => {
     try {
@@ -579,6 +622,7 @@ loadData().then(d => {
   renderApps(d.openrouter);
   renderSdk(d.downloads);
   renderQuotes(d.quotes);
+  renderSubs(d.subscriptions);
   renderNews(d.news);
   renderPods(d.podcasts);
   renderFoot(d.meta);

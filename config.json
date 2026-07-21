@@ -46,5 +46,12 @@
   "openrouter": {
     "rankings_days": 30,
     "top_models_chart": 6
+  },
+  "subscriptions": {
+    "publishers": ["FundaAI", "Capital Wars", "SemiAnalysis", "Citrini Research"],
+    "per_publisher": 8,
+    "max_total": 30,
+    "obsidian_vault": "Xin",
+    "vault_dir": "2-Areas/投资/GeoScope研报/内容"
   }
 }
