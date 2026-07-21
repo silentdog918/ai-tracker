@@ -365,7 +365,9 @@ function renderTokens(or, topN) {
   const otherByDate = {};
   or.daily.forEach(r => { if (!topSet.has(r.m)) otherByDate[r.d] = (otherByDate[r.d] || 0) + r.t; });
 
-  box.innerHTML = '<div class="chart" id="tokenChart"></div><div id="tokenTable" style="margin-top:10px"></div>';
+  const staleNote = or.rankings_stale
+    ? '<div class="sub" style="margin-bottom:8px">⚠ 排行为上次成功抓取的存档(本次缺 Key 或接口失败,其余板块不受影响)</div>' : "";
+  box.innerHTML = staleNote + '<div class="chart" id="tokenChart"></div><div id="tokenTable" style="margin-top:10px"></div>';
   const opt = baseOpt();
   opt.color = SERIES;
   opt.xAxis.data = dates;

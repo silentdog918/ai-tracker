@@ -4,6 +4,10 @@ on:
   schedule:
     - cron: "30 22 * * *"   # UTC 22:30 = 北京/新加坡时间早上 06:30
   workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths-ignore:
+      - "data/**"   # 数据提交不触发(双保险,GITHUB_TOKEN 推送本身也不会触发)
 
 permissions:
   contents: write
