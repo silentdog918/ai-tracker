@@ -403,6 +403,12 @@ function renderTokens(or, topN) {
 
   // 最新一天 Top 表 + 7 日环比
   const lastD = dates[dates.length - 1];
+  const subEl = document.querySelector("#tokens .card .sub");
+  if (subEl && !subEl.dataset.stamped) {
+    subEl.dataset.stamped = "1";
+    subEl.insertAdjacentHTML("beforeend",
+      ` · 数据截至 <b>${esc(lastD)}</b>(官方按完整 UTC 日 T+1 发布)`);
+  }
   const dayTotal = or.daily.filter(r => r.d === lastD).reduce((a, r) => a + r.t, 0);
   const w7 = dates.slice(-7), p7 = dates.slice(-14, -7);
   const sumIn = (m, ds) => ds.reduce((a, dd) => a + ((byModelDate[m] && byModelDate[m][dd]) || 0), 0);

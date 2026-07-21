@@ -2,7 +2,8 @@ name: daily-data-update
 
 on:
   schedule:
-    - cron: "30 22 * * *"   # UTC 22:30 = 北京/新加坡时间早上 06:30
+    - cron: "30 22 * * *"   # UTC 22:30 = 北京/新加坡 06:30(美股收盘EOD+隔夜新闻)
+    - cron: "35 0 * * *"    # UTC 00:35 = 北京/新加坡 08:35(UTC午夜刚过,补抓最新完整日token数据)
   workflow_dispatch: {}
   push:
     branches: [main]
