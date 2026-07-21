@@ -78,7 +78,7 @@ def run():
             except Exception:
                 out["apps_raw"] = None
         except Exception as e:
-            rankings_status = f"排行接口失败: {type(e).__name__}"
+            rankings_status = f"排行接口失败: {e}"
 
     # ---- 存档保护:本次没拿到排行,就保留上一次的 ----
     if "daily" not in out:

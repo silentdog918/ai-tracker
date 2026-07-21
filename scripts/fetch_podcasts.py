@@ -5,9 +5,18 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 
-from common import http_get, load_config, now_iso, save_json
+import json
+import os
+
+from common import DATA_DIR, http_get, load_config, now_iso, save_json
 
 ITUNES_NS = "{http://www.itunes.com/dtds/podcast-1.0.dtd}"
+# Substack 等源会拦数据中心 IP 的默认 UA,用浏览器 UA 提高成功率
+BROWSER_HEADERS = {
+    "User-Agent": ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                   "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"),
+    "Accept": "application/rss+xml, application/xml;q=0.9, */*;q=0.8",
+}
 
 
 def _fmt_duration(raw):
@@ -53,13 +62,21 @@ def run():
     cfg = load_config()["podcasts"]
     cutoff = (datetime.now(timezone.utc)
               - timedelta(days=cfg.get("window_days", 45))).strftime("%Y-%m-%dT%H:%M:%SZ")
+    try:
+        with open(os.path.join(DATA_DIR, "podcasts.json"), encoding="utf-8") as f:
+            prev_eps = json.load(f).get("episodes", [])
+    except Exception:
+        prev_eps = []
     episodes, fails = [], []
     for show in cfg["shows"]:
         try:
-            eps = _parse(http_get(show["feed"], timeout=40), show["name"])
+            eps = _parse(http_get(show["feed"], timeout=40, headers=BROWSER_HEADERS), show["name"])
             episodes.extend(e for e in eps if e["published"] >= cutoff)
         except Exception as e:
-            fails.append(f"{show['name']}: {type(e).__name__}")
+            fails.append(f"{show['name']}: {e}")
+            # 存档保护:该源失败就沿用上次抓到的这档节目
+            episodes.extend(p for p in prev_eps
+                            if p.get("show") == show["name"] and p.get("published", "") >= cutoff)
     episodes.sort(key=lambda x: x["published"], reverse=True)
     episodes = episodes[: cfg.get("max_total", 40)]
     shows = [s["name"] for s in cfg["shows"]]
