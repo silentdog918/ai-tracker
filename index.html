@@ -128,7 +128,6 @@
     <a href="#quotes">核心标的</a>
     <a href="#subs">订阅研报</a>
     <a href="#news">产业链新闻</a>
-    <a href="#distilled">AI 蒸馏</a>
     <a href="#podcasts">播客</a>
   </nav>
 
@@ -192,15 +191,6 @@
       <div class="sub">按环节分类:算力与资本开支 → 模型厂商 → 应用与商业化 → 融资与IPO</div>
       <div class="chips" id="newsChips"></div>
       <div id="newsBox"></div>
-    </div>
-  </section>
-
-  <section id="distilled">
-    <div class="card">
-      <h2>AI 蒸馏精选 · Distilled</h2>
-      <div class="sub" id="dstlSub">250+ AI 信源 → 打分过滤 → LLM 蒸馏,只留「读 / 学 / 做」三栏的高分文章</div>
-      <div class="chips" id="dstlChips"></div>
-      <div id="dstlBox"></div>
     </div>
   </section>
 
@@ -597,38 +587,6 @@ function renderNews(nd) {
   draw();
 }
 
-function renderDistilled(dd) {
-  const box = $("dstlBox"), chipsBox = $("dstlChips");
-  if (!dd || !dd.items || !dd.items.length) {
-    box.innerHTML = '<div class="empty">Distilled 数据未抓到</div>';
-    return;
-  }
-  const meta = [];
-  if (dd.total_articles) meta.push(`本刊扫描 <b>${dd.total_articles}</b> 篇 → 精选 ${dd.items.length} 篇`);
-  if (dd.src_generated_at) meta.push(`蒸馏于 ${new Date(dd.src_generated_at).toLocaleString("zh-CN", { hour12: false })}`);
-  if (dd.stale) meta.push('<span style="color:var(--muted)">⚠ 存档数据</span>');
-  if (meta.length) $("dstlSub").innerHTML += " · " + meta.join(" · ");
-  const boards = [...new Set(dd.items.map(i => i.board))];
-  const boardColor = { "读": SERIES[0], "学": SERIES[2], "做": SERIES[1] };
-  let active = "全部";
-  const draw = () => {
-    const items = dd.items.filter(i => active === "全部" || i.board === active);
-    box.innerHTML = items.map(i =>
-      `<div class="item">
-        <a class="t" href="${esc(i.link)}" target="_blank" rel="noopener">${esc(i.title)}</a>
-        <div class="meta">${badge(i.board, boardColor[i.board] || OTHER)}<span style="color:var(--muted);font-variant-numeric:tabular-nums">${i.score ?? "—"} 分</span> · ${esc(i.source || "")}${i.topic ? " · " + esc(i.topic) : ""}${i.date ? " · " + esc(i.date) : ""}</div>
-      </div>`).join("") || '<div class="empty">该栏暂无</div>';
-  };
-  chipsBox.innerHTML = ["全部", ...boards].map(c =>
-    `<button data-c="${esc(c)}" class="${c === "全部" ? "on" : ""}">${esc(c)}</button>`).join("");
-  chipsBox.querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
-    active = b.dataset.c;
-    chipsBox.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
-    draw();
-  }));
-  draw();
-}
-
 function renderPods(pd) {
   const box = $("podBox");
   if (!pd || !pd.episodes || !pd.episodes.length) { box.innerHTML = '<div class="empty">播客未抓到</div>'; return; }
@@ -652,7 +610,7 @@ function renderFoot(meta) {
 /* ================= 入口 ================= */
 async function loadData() {
   if (window.__DATA__) return window.__DATA__;
-  const names = ["meta", "openrouter", "downloads", "news", "quotes", "podcasts", "subscriptions", "distilled"];
+  const names = ["meta", "openrouter", "downloads", "news", "quotes", "podcasts", "subscriptions"];
   const out = {};
   await Promise.all(names.map(async n => {
     try {
@@ -672,7 +630,6 @@ loadData().then(d => {
   renderQuotes(d.quotes);
   renderSubs(d.subscriptions);
   renderNews(d.news);
-  renderDistilled(d.distilled);
   renderPods(d.podcasts);
   renderFoot(d.meta);
 }).catch(e => {

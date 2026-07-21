@@ -55,11 +55,6 @@
     "rankings_days": 30,
     "top_models_chart": 6
   },
-  "distilled": {
-    "url": "https://distilled.makinote.cn/lists/boards.json",
-    "boards": ["read", "learn", "do"],
-    "top_n": 24
-  },
   "subscriptions": {
     "publishers": ["FundaAI", "Capital Wars", "SemiAnalysis", "Citrini Research"],
     "per_publisher": 8,
