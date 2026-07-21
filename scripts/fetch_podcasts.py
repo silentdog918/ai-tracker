@@ -30,6 +30,35 @@ def _fmt_duration(raw):
     return raw  # 已是 1:02:33 之类
 
 
+def _itunes_fallback(itunes_id, show):
+    """RSS 被拦时,用 iTunes 公共接口拿最近的节目(数据中心 IP 友好)。"""
+    raw = http_get(
+        f"https://itunes.apple.com/lookup?id={itunes_id}&entity=podcastEpisode&limit=8",
+        headers=BROWSER_HEADERS,
+    )
+    eps = []
+    for r in json.loads(raw).get("results", []):
+        if r.get("kind") != "podcast-episode":
+            continue
+        ms = r.get("trackTimeMillis")
+        dur = ""
+        if ms:
+            sec = ms // 1000
+            h, m = sec // 3600, (sec % 3600) // 60
+            dur = f"{h}h{m:02d}m" if h else f"{m}m"
+        pub = (r.get("releaseDate") or "").replace(".000Z", "Z")
+        if not pub:
+            continue
+        eps.append({
+            "show": show,
+            "title": r.get("trackName", ""),
+            "published": pub,
+            "link": r.get("trackViewUrl") or r.get("episodeUrl", ""),
+            "duration": dur,
+        })
+    return eps
+
+
 def _parse(xml_bytes, show):
     root = ET.fromstring(xml_bytes)
     eps = []
@@ -73,8 +102,17 @@ def run():
             eps = _parse(http_get(show["feed"], timeout=40, headers=BROWSER_HEADERS), show["name"])
             episodes.extend(e for e in eps if e["published"] >= cutoff)
         except Exception as e:
+            # 备用通道 1:iTunes 公共接口
+            if show.get("itunes_id"):
+                try:
+                    eps = _itunes_fallback(show["itunes_id"], show["name"])
+                    episodes.extend(x for x in eps if x["published"] >= cutoff)
+                    fails.append(f"{show['name']}: RSS失败已走iTunes备用通道")
+                    continue
+                except Exception:
+                    pass
             fails.append(f"{show['name']}: {e}")
-            # 存档保护:该源失败就沿用上次抓到的这档节目
+            # 备用通道 2:沿用上次抓到的存档
             episodes.extend(p for p in prev_eps
                             if p.get("show") == show["name"] and p.get("published", "") >= cutoff)
     episodes.sort(key=lambda x: x["published"], reverse=True)
