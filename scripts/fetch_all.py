@@ -16,6 +16,7 @@ MODULES = [
     ("quotes", "fetch_quotes"),
     ("podcasts", "fetch_podcasts"),
     ("subscriptions", "fetch_subscriptions"),
+    ("distilled", "fetch_distilled"),
 ]
 
 
