@@ -1,0 +1,78 @@
+# -*- coding: utf-8 -*-
+"""播客 RSS -> data/podcasts.json。投资向 + AI 向节目更新流。"""
+import re
+import xml.etree.ElementTree as ET
+from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
+
+from common import http_get, load_config, now_iso, save_json
+
+ITUNES_NS = "{http://www.itunes.com/dtds/podcast-1.0.dtd}"
+
+
+def _fmt_duration(raw):
+    raw = (raw or "").strip()
+    if not raw:
+        return ""
+    if re.fullmatch(r"\d+", raw):  # 纯秒数
+        sec = int(raw)
+        h, m = sec // 3600, (sec % 3600) // 60
+        return f"{h}h{m:02d}m" if h else f"{m}m"
+    return raw  # 已是 1:02:33 之类
+
+
+def _parse(xml_bytes, show):
+    root = ET.fromstring(xml_bytes)
+    eps = []
+    for it in root.iter("item"):
+        title = (it.findtext("title") or "").strip()
+        pub = it.findtext("pubDate")
+        link = (it.findtext("link") or "").strip()
+        enc = it.find("enclosure")
+        audio = (enc.get("url") or "").strip() if enc is not None else ""
+        dur = _fmt_duration(it.findtext(ITUNES_NS + "duration"))
+        if not title or not pub:
+            continue
+        try:
+            dt = parsedate_to_datetime(pub).astimezone(timezone.utc)
+        except Exception:
+            continue
+        eps.append({
+            "show": show,
+            "title": title,
+            "published": dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "link": link or audio,
+            "duration": dur,
+        })
+        if len(eps) >= 8:  # RSS 是倒序,拿最近几期就够
+            break
+    return eps
+
+
+def run():
+    cfg = load_config()["podcasts"]
+    cutoff = (datetime.now(timezone.utc)
+              - timedelta(days=cfg.get("window_days", 45))).strftime("%Y-%m-%dT%H:%M:%SZ")
+    episodes, fails = [], []
+    for show in cfg["shows"]:
+        try:
+            eps = _parse(http_get(show["feed"], timeout=40), show["name"])
+            episodes.extend(e for e in eps if e["published"] >= cutoff)
+        except Exception as e:
+            fails.append(f"{show['name']}: {type(e).__name__}")
+    episodes.sort(key=lambda x: x["published"], reverse=True)
+    episodes = episodes[: cfg.get("max_total", 40)]
+    shows = [s["name"] for s in cfg["shows"]]
+    save_json("podcasts.json", {
+        "generated_at": now_iso(),
+        "shows": shows,
+        "episodes": episodes,
+        "failed_feeds": fails or None,
+    })
+    if fails and not episodes:
+        raise RuntimeError("全部播客源失败: " + "; ".join(fails))
+    return {"count": len(episodes), "failed_feeds": fails or None}
+
+
+if __name__ == "__main__":
+    print(run())

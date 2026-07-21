@@ -1,0 +1,50 @@
+{
+  "site_title": "AI 商业化景气度追踪",
+  "news": {
+    "window_days": 7,
+    "per_query": 20,
+    "max_total": 100,
+    "queries": [
+      { "q": "Nvidia OR Broadcom OR TSMC OR \"AI data center\" OR \"AI capex\" OR CoreWeave", "category": "算力与资本开支", "lang": "en" },
+      { "q": "OpenAI OR Anthropic OR \"Google DeepMind\" OR Gemini OR DeepSeek OR xAI", "category": "模型厂商", "lang": "en" },
+      { "q": "\"AI revenue\" OR \"AI monetization\" OR \"AI ARR\" OR \"enterprise AI adoption\" OR Copilot", "category": "应用与商业化", "lang": "en" },
+      { "q": "\"AI startup\" funding OR \"AI IPO\" OR \"AI valuation\"", "category": "融资与IPO", "lang": "en" },
+      { "q": "大模型 OR AI算力 OR AI芯片 OR 智算中心", "category": "中文要闻", "lang": "zh" }
+    ]
+  },
+  "sdk": {
+    "history_days": 90,
+    "npm": ["openai", "@anthropic-ai/sdk", "@google/genai", "ai", "langchain"],
+    "pypi": ["openai", "anthropic", "google-genai", "langchain", "litellm", "vllm"]
+  },
+  "quotes": {
+    "groups": [
+      { "name": "算力链", "symbols": ["NVDA", "AVGO", "TSM", "VRT"] },
+      { "name": "云与大厂", "symbols": ["MSFT", "GOOGL", "META", "AMZN", "ORCL"] },
+      { "name": "AI 应用与新贵", "symbols": ["PLTR", "CRWV"] },
+      { "name": "基准", "symbols": ["QQQ"] }
+    ],
+    "names": {
+      "NVDA": "英伟达", "AVGO": "博通", "TSM": "台积电", "VRT": "Vertiv",
+      "MSFT": "微软", "GOOGL": "谷歌", "META": "Meta", "AMZN": "亚马逊", "ORCL": "甲骨文",
+      "PLTR": "Palantir", "CRWV": "CoreWeave", "QQQ": "纳指100ETF"
+    }
+  },
+  "podcasts": {
+    "window_days": 45,
+    "max_total": 40,
+    "shows": [
+      { "name": "BG2", "feed": "https://anchor.fm/s/f06c2370/podcast/rss" },
+      { "name": "All-In", "feed": "https://allinchamathjason.libsyn.com/rss" },
+      { "name": "Invest Like the Best", "feed": "https://feeds.megaphone.fm/investlikethebest" },
+      { "name": "Dwarkesh Podcast", "feed": "https://api.substack.com/feed/podcast/69345.rss" },
+      { "name": "Latent Space", "feed": "https://api.substack.com/feed/podcast/1084089.rss" },
+      { "name": "硅谷101", "feed": "https://sv101.fireside.fm/rss" },
+      { "name": "OnBoard!", "feed": "https://feed.xyzfm.space/xxg7ryklkkft" }
+    ]
+  },
+  "openrouter": {
+    "rankings_days": 30,
+    "top_models_chart": 6
+  }
+}

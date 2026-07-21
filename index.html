@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 商业化景气度追踪</title>
+<script src="./assets/echarts.min.js"></script>
+<style>
+  /* ===== 设计令牌(深色模式,取自验证过的参考色板) ===== */
+  .viz-root {
+    color-scheme: dark;
+    --page:        #0d0d0d;
+    --surface-1:   #1a1a19;
+    --text-1:      #ffffff;
+    --text-2:      #c3c2b7;
+    --muted:       #898781;
+    --grid:        #2c2c2a;
+    --baseline:    #383835;
+    --border:      rgba(255,255,255,0.10);
+    --s1: #3987e5;  /* 蓝 */
+    --s2: #d95926;  /* 橙 */
+    --s3: #199e70;  /* 青绿 */
+    --s4: #c98500;  /* 黄 */
+    --s5: #d55181;  /* 品红 */
+    --s6: #008300;  /* 绿 */
+    --s7: #9085e9;  /* 紫 */
+    --s8: #e66767;  /* 红 */
+    --other: #898781;
+    --up:   #d03b3b;  /* 红涨(A股习惯) */
+    --down: #0ca30c;  /* 绿跌 */
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { scroll-behavior:smooth; scroll-padding-top:64px; }
+  body {
+    background: var(--page); color: var(--text-1);
+    font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size: 14px; line-height: 1.55;
+  }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 20px 60px; }
+
+  /* ===== 头部与导航 ===== */
+  header.site { padding: 34px 0 10px; }
+  header.site h1 { font-size: 24px; letter-spacing: .5px; }
+  header.site .tagline { color: var(--text-2); margin-top: 6px; font-size: 13px; }
+  header.site .stamp { color: var(--muted); margin-top: 4px; font-size: 12px; }
+  nav.top {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(13,13,13,.86); backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    margin: 14px -20px 26px; padding: 10px 20px;
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+  nav.top a {
+    font-size: 13px; color: var(--text-2);
+    padding: 5px 12px; border-radius: 999px; border: 1px solid var(--border);
+  }
+  nav.top a:hover { color: var(--text-1); border-color: var(--s1); }
+
+  /* ===== 通用卡片与区块 ===== */
+  section { margin-bottom: 34px; }
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px; }
+  h2 { font-size: 17px; margin-bottom: 2px; }
+  .sub { color: var(--muted); font-size: 12.5px; margin-bottom: 14px; }
+  .sub b { color: var(--text-2); font-weight: 500; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 920px) { .grid2 { grid-template-columns: 1fr; } }
+
+  /* ===== 指标速览 ===== */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(178px, 1fr)); gap: 12px; }
+  .tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .tile .lbl { color: var(--muted); font-size: 12px; }
+  .tile .val { font-size: 24px; font-weight: 700; margin-top: 3px; letter-spacing: .3px; }
+  .tile .note { color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+
+  /* ===== 涨跌小徽章(永远带箭头和数字,不只靠颜色) ===== */
+  .chip { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .chip.up { color: var(--up); }
+  .chip.down { color: var(--down); }
+  .chip.flat { color: var(--muted); }
+
+  /* ===== 表格 ===== */
+  table { width: 100%; border-collapse: collapse; }
+  th { color: var(--muted); font-size: 12px; font-weight: 500; text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--baseline); }
+  td { padding: 8px; border-bottom: 1px solid var(--grid); font-variant-numeric: tabular-nums; }
+  tr:last-child td { border-bottom: none; }
+  th.r, td.r { text-align: right; }
+  .sym { font-weight: 600; }
+  .sym small { color: var(--muted); font-weight: 400; margin-left: 6px; }
+  .grp td { color: var(--muted); font-size: 12px; padding-top: 14px; border-bottom: 1px solid var(--baseline); }
+
+  /* ===== 新闻与播客列表 ===== */
+  .badge { display: inline-block; font-size: 11px; padding: 1.5px 8px; border-radius: 999px; margin-right: 8px; border: 1px solid transparent; white-space: nowrap; }
+  .item { padding: 10px 2px; border-bottom: 1px solid var(--grid); }
+  .item:last-child { border-bottom: none; }
+  .item .t { font-size: 14.5px; }
+  .item a.t:hover { color: var(--s1); }
+  .item .meta { color: var(--muted); font-size: 12px; margin-top: 3px; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .chips button {
+    font: inherit; font-size: 12.5px; cursor: pointer;
+    color: var(--text-2); background: transparent;
+    border: 1px solid var(--border); border-radius: 999px; padding: 4px 12px;
+  }
+  .chips button.on { background: var(--s1); border-color: var(--s1); color: #fff; }
+  .chart { width: 100%; height: 340px; }
+  .empty { color: var(--muted); padding: 18px 0; font-size: 13px; }
+  .hint { background: rgba(57,135,229,.08); border: 1px solid rgba(57,135,229,.35); border-radius: 10px; padding: 12px 14px; font-size: 13px; color: var(--text-2); margin-bottom: 14px; }
+  .hint code { color: var(--s1); font-family: ui-monospace, monospace; font-size: 12px; }
+  footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--border); padding-top: 18px; line-height: 1.9; }
+  .dot { display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:4px; }
+  .spark { display:block; }
+</style>
+</head>
+<body class="viz-root">
+<div class="wrap">
+
+  <header class="site">
+    <h1>AI 商业化景气度追踪</h1>
+    <div class="tagline">Token 消耗 · 开发者生态 · 产业链新闻 · 核心标的 —— 需求侧与供给侧的高频信号,自用版</div>
+    <div class="stamp" id="stamp">数据加载中…</div>
+  </header>
+
+  <nav class="top">
+    <a href="#pulse">速览</a>
+    <a href="#tokens">Token 景气度</a>
+    <a href="#sdk">开发者生态</a>
+    <a href="#quotes">核心标的</a>
+    <a href="#news">产业链新闻</a>
+    <a href="#podcasts">播客</a>
+  </nav>
+
+  <section id="pulse">
+    <div class="tiles" id="tilesBox"></div>
+  </section>
+
+  <section id="tokens">
+    <div class="card">
+      <h2>模型 Token 消耗 · 需求侧</h2>
+      <div class="sub">OpenRouter 全网日 Token 用量,<b>AI 应用真实需求最直接的高频代理指标</b>;看总量趋势与头部模型份额切换</div>
+      <div id="tokenArea"></div>
+    </div>
+    <div style="height:16px"></div>
+    <div class="grid2">
+      <div class="card">
+        <h2>新上架模型</h2>
+        <div class="sub">OpenRouter 最新收录 · 关注价格带与上下文长度的<b>供给侧变化</b></div>
+        <div id="newModels"></div>
+      </div>
+      <div class="card">
+        <h2>Top Apps(按 Token 消耗)</h2>
+        <div class="sub">谁在真金白银地烧 Token · <b>应用层商业化的落点</b></div>
+        <div id="appsBox"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="sdk">
+    <div class="card">
+      <h2>SDK 下载量 · 开发者生态</h2>
+      <div class="sub">npm / PyPI 周下载(7 日滚动合计),<b>开发者用脚投票的领先指标</b>;拐点比绝对值重要</div>
+      <div class="grid2">
+        <div><div class="chart" id="npmChart"></div></div>
+        <div><div class="chart" id="pypiChart"></div></div>
+      </div>
+      <div id="sdkTable" style="margin-top:10px"></div>
+    </div>
+  </section>
+
+  <section id="quotes">
+    <div class="card">
+      <h2>AI 核心标的 · EOD 行情</h2>
+      <div class="sub" id="quotesSub">日更收盘价(非实时)· 红涨绿跌 · 60 日走势</div>
+      <div id="quotesBox"></div>
+    </div>
+  </section>
+
+  <section id="news">
+    <div class="card">
+      <h2>产业链新闻 · 近 7 天</h2>
+      <div class="sub">按环节分类:算力与资本开支 → 模型厂商 → 应用与商业化 → 融资与IPO</div>
+      <div class="chips" id="newsChips"></div>
+      <div id="newsBox"></div>
+    </div>
+  </section>
+
+  <section id="podcasts">
+    <div class="card">
+      <h2>播客更新</h2>
+      <div class="sub">投资视角为主:BG2 / All-In / Invest Like the Best / Dwarkesh / Latent Space / 硅谷101 / OnBoard!</div>
+      <div id="podBox"></div>
+    </div>
+  </section>
+
+  <footer id="foot"></footer>
+</div>
+
+<!--__PREVIEW_DATA__-->
+<script>
+/* ================= 工具 ================= */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const SERIES = ["#3987e5","#d95926","#199e70","#c98500","#d55181","#008300","#9085e9","#e66767"];
+const OTHER = "#898781";
+
+function fmtWan(n) {
+  if (n == null) return "—";
+  if (n >= 1e8) return (n/1e8).toFixed(2) + " 亿";
+  if (n >= 1e4) return (n/1e4).toFixed(1) + " 万";
+  return n.toLocaleString();
+}
+function fmtTok(t) {
+  if (t == null) return "—";
+  if (t >= 1e12) return (t/1e12).toFixed(2) + " 万亿";
+  if (t >= 1e8) return (t/1e8).toFixed(1) + " 亿";
+  return fmtWan(t);
+}
+function chip(v, digits = 1, suffix = "%") {
+  if (v == null || isNaN(v)) return '<span class="chip flat">—</span>';
+  const s = Number(v);
+  if (Math.abs(s) < 1e-9) return '<span class="chip flat">0' + suffix + '</span>';
+  const cls = s > 0 ? "up" : "down";
+  const arrow = s > 0 ? "▲" : "▼";
+  return `<span class="chip ${cls}">${arrow} ${s > 0 ? "+" : ""}${s.toFixed(digits)}${suffix}</span>`;
+}
+function relTime(iso) {
+  const t = new Date(iso), now = new Date();
+  const mins = Math.round((now - t) / 60000);
+  if (mins < 60) return Math.max(mins,1) + " 分钟前";
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return hrs + " 小时前";
+  const days = Math.round(hrs / 24);
+  if (days === 1) return "昨天";
+  if (days < 8) return days + " 天前";
+  return `${t.getMonth()+1}月${t.getDate()}日`;
+}
+function catColor(i) { return SERIES[i % SERIES.length]; }
+function badge(text, color) {
+  return `<span class="badge" style="color:${color};border-color:${color}55;background:${color}14">${esc(text)}</span>`;
+}
+function rolling7(series) {
+  const out = [];
+  for (let i = 6; i < series.length; i++) {
+    let s = 0;
+    for (let j = i - 6; j <= i; j++) s += series[j].v;
+    out.push({ d: series[i].d, v: s });
+  }
+  return out;
+}
+function spark(values, w = 110, h = 30) {
+  if (!values || values.length < 2) return "";
+  const min = Math.min(...values), max = Math.max(...values);
+  const rng = max - min || 1;
+  const pts = values.map((v, i) =>
+    `${(i/(values.length-1)*(w-4)+2).toFixed(1)},${(h-3-(v-min)/rng*(h-6)).toFixed(1)}`);
+  const last = pts[pts.length-1].split(",");
+  return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true">
+    <polyline points="${pts.join(" ")}" fill="none" stroke="#3987e5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${last[0]}" cy="${last[1]}" r="2.4" fill="#3987e5"/></svg>`;
+}
+
+/* ============ ECharts 公共主题 ============ */
+const charts = [];
+function baseOpt() {
+  return {
+    textStyle: { fontFamily: "system-ui, -apple-system, 'Segoe UI', 'PingFang SC', sans-serif" },
+    grid: { left: 10, right: 14, top: 34, bottom: 54, containLabel: true },
+    xAxis: {
+      type: "category", boundaryGap: false,
+      axisLine: { lineStyle: { color: "#383835" } },
+      axisLabel: { color: "#898781", fontSize: 11 },
+      axisTick: { show: false },
+    },
+    yAxis: {
+      type: "value",
+      splitLine: { lineStyle: { color: "#2c2c2a" } },
+      axisLabel: { color: "#898781", fontSize: 11 },
+    },
+    legend: {
+      bottom: 0, type: "scroll",
+      textStyle: { color: "#c3c2b7", fontSize: 11.5 },
+      pageTextStyle: { color: "#c3c2b7" },
+      itemWidth: 14, itemHeight: 3, icon: "roundRect",
+    },
+    tooltip: {
+      trigger: "axis",
+      backgroundColor: "#1a1a19", borderColor: "rgba(255,255,255,.14)",
+      textStyle: { color: "#c3c2b7", fontSize: 12 },
+      axisPointer: { type: "line", lineStyle: { color: "#52514e" } },
+    },
+  };
+}
+function makeChart(el, opt) {
+  if (typeof echarts === "undefined") {
+    el.outerHTML = '<div class="empty">图表库(CDN)未能加载,请联网后刷新;表格数据不受影响。</div>';
+    return null;
+  }
+  const c = echarts.init(el, null, { renderer: "canvas" });
+  c.setOption(opt);
+  charts.push(c);
+  return c;
+}
+window.addEventListener("resize", () => charts.forEach(c => c.resize()));
+
+/* ================= 渲染 ================= */
+function renderStamp(meta) {
+  if (!meta) { $("stamp").textContent = "数据未加载"; return; }
+  const t = new Date(meta.generated_at);
+  $("stamp").textContent = "数据更新于 " + t.toLocaleString("zh-CN", { hour12: false }) + "(每日 06:30 GMT+8 自动抓取)";
+}
+
+function renderTiles(d) {
+  const tiles = [];
+  const or = d.openrouter;
+  if (or && or.daily && or.daily.length) {
+    const byDate = {};
+    or.daily.forEach(r => byDate[r.d] = (byDate[r.d] || 0) + r.t);
+    const dates = Object.keys(byDate).sort();
+    const sum = arr => arr.reduce((a, b) => a + b, 0);
+    const last7 = sum(dates.slice(-7).map(x => byDate[x]));
+    const prev7 = sum(dates.slice(-14, -7).map(x => byDate[x]));
+    const wow = prev7 ? (last7/prev7 - 1) * 100 : null;
+    tiles.push({ lbl: "OpenRouter 周 Token", val: fmtTok(last7), chip: chip(wow), note: "vs 上周" });
+  } else {
+    tiles.push({ lbl: "OpenRouter 周 Token", val: "待接入", chip: "", note: "加 OPENROUTER_API_KEY 解锁" });
+  }
+  const dl = d.downloads;
+  const pick = (eco, pkg, label, note) => {
+    const p = dl && dl[eco] && dl[eco][pkg];
+    if (p) tiles.push({ lbl: label, val: fmtWan(p.last7), chip: chip(p.wow_pct), note });
+  };
+  pick("pypi", "openai", "PyPI · openai 周下载", "应用开发主力");
+  pick("pypi", "vllm", "PyPI · vllm 周下载", "推理基建信号");
+  pick("npm", "@anthropic-ai/sdk", "npm · anthropic 周下载", "Claude 生态");
+  const q = d.quotes && d.quotes.quotes;
+  const pickQ = sym => {
+    if (q && q[sym]) tiles.push({ lbl: sym + " · " + (q[sym].name || ""), val: q[sym].price.toLocaleString(), chip: chip(q[sym].chg5d, 2), note: "5 日涨跌" });
+  };
+  pickQ("NVDA"); pickQ("QQQ");
+  $("tilesBox").innerHTML = tiles.map(t =>
+    `<div class="tile"><div class="lbl">${esc(t.lbl)}</div><div class="val">${t.val}</div>
+     <div class="note">${t.chip} <span>${esc(t.note || "")}</span></div></div>`).join("");
+}
+
+function renderTokens(or, topN) {
+  const box = $("tokenArea");
+  if (!or) { box.innerHTML = '<div class="empty">OpenRouter 数据未抓到</div>'; return; }
+  if (!or.daily || !or.daily.length) {
+    box.innerHTML = `<div class="hint">此板块需要一个免费的 OpenRouter API Key(仓库 Secrets 里加
+      <code>OPENROUTER_API_KEY</code>,详见 README)。接入后这里会展示近 30 天
+      每日 Token 消耗堆叠图、Top 模型份额与周环比。当前先展示公开的模型目录信号(共收录
+      <b>${or.model_count ?? "—"}</b> 个模型)。</div>`;
+    return;
+  }
+  // 聚合
+  const dates = [...new Set(or.daily.map(r => r.d))].sort();
+  const totalByModel = {}, byModelDate = {};
+  or.daily.forEach(r => {
+    if (r.m === "other") return;
+    totalByModel[r.m] = (totalByModel[r.m] || 0) + r.t;
+    (byModelDate[r.m] = byModelDate[r.m] || {})[r.d] = r.t;
+  });
+  const top = Object.entries(totalByModel).sort((a, b) => b[1] - a[1]).slice(0, topN).map(x => x[0]);
+  const topSet = new Set(top);
+  const otherByDate = {};
+  or.daily.forEach(r => { if (!topSet.has(r.m)) otherByDate[r.d] = (otherByDate[r.d] || 0) + r.t; });
+
+  box.innerHTML = '<div class="chart" id="tokenChart"></div><div id="tokenTable" style="margin-top:10px"></div>';
+  const opt = baseOpt();
+  opt.color = SERIES;
+  opt.xAxis.data = dates;
+  opt.yAxis.axisLabel.formatter = v => fmtTok(v);
+  opt.tooltip.formatter = ps => {
+    let total = 0; ps.forEach(p => total += (p.value || 0));
+    const rows = [...ps].sort((a, b) => (b.value||0) - (a.value||0)).map(p =>
+      `${p.marker} ${esc(p.seriesName)} &nbsp; <b>${fmtTok(p.value)}</b>`).join("<br>");
+    return `<b>${ps[0].axisValue}</b> · 合计 ${fmtTok(total)}<br>${rows}`;
+  };
+  const shortName = m => m.split("/").pop().replace(/-\d{8}(?=$|:)/, "");
+  opt.series = top.map(m => ({
+    name: shortName(m), type: "line", stack: "总量",
+    areaStyle: { opacity: .85 }, lineStyle: { width: 1 }, showSymbol: false, emphasis: { focus: "series" },
+    data: dates.map(dd => (byModelDate[m] && byModelDate[m][dd]) || 0),
+  }));
+  opt.series.push({
+    name: "其他", type: "line", stack: "总量", color: OTHER,
+    areaStyle: { opacity: .7 }, lineStyle: { width: 1 }, showSymbol: false,
+    data: dates.map(dd => otherByDate[dd] || 0),
+  });
+  makeChart($("tokenChart"), opt);
+
+  // 最新一天 Top 表 + 7 日环比
+  const lastD = dates[dates.length - 1];
+  const dayTotal = or.daily.filter(r => r.d === lastD).reduce((a, r) => a + r.t, 0);
+  const w7 = dates.slice(-7), p7 = dates.slice(-14, -7);
+  const sumIn = (m, ds) => ds.reduce((a, dd) => a + ((byModelDate[m] && byModelDate[m][dd]) || 0), 0);
+  const rows = Object.entries(totalByModel)
+    .map(([m]) => ({ m, day: (byModelDate[m] && byModelDate[m][lastD]) || 0 }))
+    .sort((a, b) => b.day - a.day).slice(0, 12)
+    .map((r, i) => {
+      const l7 = sumIn(r.m, w7), pp7 = sumIn(r.m, p7);
+      const wow = pp7 ? (l7/pp7 - 1) * 100 : null;
+      return `<tr><td class="r" style="color:var(--muted)">${i+1}</td>
+        <td>${esc(r.m)}</td><td class="r">${fmtTok(r.day)}</td>
+        <td class="r">${dayTotal ? (r.day/dayTotal*100).toFixed(1) + "%" : "—"}</td>
+        <td class="r">${chip(wow)}</td></tr>`;
+    }).join("");
+  $("tokenTable").innerHTML = `<table><thead><tr><th class="r">#</th><th>模型</th>
+    <th class="r">最新日 Token</th><th class="r">份额</th><th class="r">周环比</th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
+}
+
+function renderNewModels(or) {
+  const box = $("newModels");
+  if (!or || !or.new_models || !or.new_models.length) { box.innerHTML = '<div class="empty">暂无数据</div>'; return; }
+  const rows = or.new_models.slice(0, 10).map(m => {
+    const d = m.created ? new Date(m.created * 1000) : null;
+    const ds = d ? `${d.getMonth()+1}/${d.getDate()}` : "—";
+    const price = (m.prompt_usd_per_m != null && m.completion_usd_per_m != null)
+      ? `$${m.prompt_usd_per_m} / $${m.completion_usd_per_m}` : "—";
+    const ctx = m.context
+      ? (m.context >= 1e6
+          ? (m.context/1e6).toFixed(1).replace(/\.0$/, "") + "M"
+          : Math.round(m.context/1000) + "K")
+      : "—";
+    return `<tr><td style="color:var(--muted)">${ds}</td><td>${esc(m.name)}</td>
+      <td class="r" title="输入/输出 每百万 token 美元">${price}</td><td class="r">${ctx}</td></tr>`;
+  }).join("");
+  box.innerHTML = `<table><thead><tr><th>日期</th><th>模型</th><th class="r">$/M tok(入/出)</th><th class="r">上下文</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function renderApps(or) {
+  const box = $("appsBox");
+  const raw = or && or.apps_raw;
+  if (!Array.isArray(raw) || !raw.length || typeof raw[0] !== "object") {
+    box.innerHTML = '<div class="empty">需要 OpenRouter Key 后自动尝试接入;若官方接口结构有变,此栏自动隐藏,不影响其他板块。</div>';
+    return;
+  }
+  const name = o => o.app_title || o.title || o.app_name || o.name || o.app || o.domain || "?";
+  const tok = o => o.total_tokens ?? o.tokens ?? o.usage ?? null;
+  const reqs = o => o.total_requests ?? null;
+  const rows = raw.slice(0, 12).map((o, i) => {
+    const t = Number(tok(o)), rq = reqs(o) != null ? Number(reqs(o)) : null;
+    const per = (rq && t) ? Math.round(t / rq).toLocaleString() : "—";
+    return `<tr><td class="r" style="color:var(--muted)">${i+1}</td><td>${esc(String(name(o)))}</td>
+     <td class="r">${fmtTok(t)}</td><td class="r">${rq != null ? fmtWan(rq) : "—"}</td>
+     <td class="r" title="平均每请求 token,粗看 Agent 化程度">${per}</td></tr>`;
+  }).join("");
+  box.innerHTML = `<table><thead><tr><th class="r">#</th><th>应用</th><th class="r">Token</th>
+    <th class="r">请求数</th><th class="r">Tok/请求</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function renderSdk(dl) {
+  if (!dl) {
+    $("npmChart").outerHTML = '<div class="empty">下载量数据未抓到</div>';
+    $("pypiChart").remove();
+    return;
+  }
+  const mk = (elId, eco, title) => {
+    const pkgs = Object.keys(dl[eco] || {});
+    if (!pkgs.length) { $(elId).outerHTML = `<div class="empty">${title} 无数据</div>`; return; }
+    const opt = baseOpt();
+    opt.color = SERIES;
+    opt.title = { text: title, textStyle: { color: "#c3c2b7", fontSize: 13, fontWeight: 600 }, left: 4, top: 2 };
+    const r0 = rolling7(dl[eco][pkgs[0]].series);
+    opt.xAxis.data = r0.map(p => p.d);
+    opt.yAxis.axisLabel.formatter = v => fmtWan(v);
+    opt.tooltip.formatter = ps => {
+      const rows = [...ps].sort((a,b) => (b.value||0)-(a.value||0)).map(p =>
+        `${p.marker} ${esc(p.seriesName)} &nbsp; <b>${fmtWan(p.value)}</b>`).join("<br>");
+      return `<b>${ps[0].axisValue}</b>(7日合计)<br>${rows}`;
+    };
+    opt.series = pkgs.map(p => ({
+      name: p, type: "line", showSymbol: false, lineStyle: { width: 2 },
+      emphasis: { focus: "series" },
+      data: rolling7(dl[eco][p].series).map(x => x.v),
+    }));
+    makeChart($(elId), opt);
+  };
+  mk("npmChart", "npm", "npm(JS 生态)");
+  mk("pypiChart", "pypi", "PyPI(Python 生态)");
+
+  const row = (eco, p) => {
+    const d = dl[eco][p];
+    return `<tr><td>${esc(p)}</td><td style="color:var(--muted)">${eco}</td>
+      <td class="r">${fmtWan(d.last7)}</td><td class="r">${fmtWan(d.prev7)}</td>
+      <td class="r">${chip(d.wow_pct)}</td></tr>`;
+  };
+  const rows = [...Object.keys(dl.npm || {}).map(p => row("npm", p)),
+                ...Object.keys(dl.pypi || {}).map(p => row("pypi", p))].join("");
+  $("sdkTable").innerHTML = `<table><thead><tr><th>包</th><th>生态</th>
+    <th class="r">本周下载</th><th class="r">上周</th><th class="r">周环比</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function renderQuotes(qd) {
+  const box = $("quotesBox");
+  if (!qd || !qd.quotes || !Object.keys(qd.quotes).length) { box.innerHTML = '<div class="empty">行情未抓到</div>'; return; }
+  let asof = "";
+  const body = qd.groups.map(g => {
+    const rows = g.symbols.filter(s => qd.quotes[s]).map(s => {
+      const q = qd.quotes[s];
+      asof = q.asof > asof ? q.asof : asof;
+      return `<tr><td class="sym">${esc(s)}<small>${esc(q.name || "")}</small></td>
+        <td class="r">${q.price.toLocaleString()}</td>
+        <td class="r">${chip(q.chg1d, 2)}</td><td class="r">${chip(q.chg5d, 2)}</td>
+        <td class="r">${chip(q.chg20d, 2)}</td><td class="r">${spark(q.spark)}</td></tr>`;
+    }).join("");
+    return `<tr class="grp"><td colspan="6">${esc(g.name)}</td></tr>` + rows;
+  }).join("");
+  box.innerHTML = `<table><thead><tr><th>标的</th><th class="r">收盘</th><th class="r">1D</th>
+    <th class="r">5D</th><th class="r">20D</th><th class="r">60 日走势</th></tr></thead><tbody>${body}</tbody></table>`;
+  if (asof) $("quotesSub").innerHTML = `截至 <b>${esc(asof)}</b>(EOD 收盘,非实时)· 红涨绿跌 · 60 日走势`;
+}
+
+function renderNews(nd) {
+  const box = $("newsBox"), chipsBox = $("newsChips");
+  if (!nd || !nd.items || !nd.items.length) { box.innerHTML = '<div class="empty">新闻未抓到</div>'; return; }
+  const cats = nd.categories || [...new Set(nd.items.map(i => i.category))];
+  const colorOf = c => catColor(cats.indexOf(c));
+  let active = "全部";
+  const draw = () => {
+    const items = nd.items.filter(i => active === "全部" || i.category === active);
+    box.innerHTML = items.slice(0, 60).map(i =>
+      `<div class="item">
+        <a class="t" href="${esc(i.link)}" target="_blank" rel="noopener">${esc(i.title)}</a>
+        <div class="meta">${badge(i.category, colorOf(i.category))}${esc(i.source || "")} · ${relTime(i.published)}</div>
+      </div>`).join("") || '<div class="empty">该分类暂无</div>';
+  };
+  chipsBox.innerHTML = ["全部", ...cats].map(c =>
+    `<button data-c="${esc(c)}" class="${c === "全部" ? "on" : ""}">${esc(c)}</button>`).join("");
+  chipsBox.querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
+    active = b.dataset.c;
+    chipsBox.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+    draw();
+  }));
+  draw();
+}
+
+function renderPods(pd) {
+  const box = $("podBox");
+  if (!pd || !pd.episodes || !pd.episodes.length) { box.innerHTML = '<div class="empty">播客未抓到</div>'; return; }
+  const shows = pd.shows || [...new Set(pd.episodes.map(e => e.show))];
+  box.innerHTML = pd.episodes.map(e =>
+    `<div class="item">
+      <a class="t" href="${esc(e.link)}" target="_blank" rel="noopener">${esc(e.title)}</a>
+      <div class="meta">${badge(e.show, catColor(shows.indexOf(e.show)))}${relTime(e.published)}${e.duration ? " · " + esc(e.duration) : ""}</div>
+    </div>`).join("");
+}
+
+function renderFoot(meta) {
+  const src = meta && meta.sources ? Object.entries(meta.sources).map(([k, v]) =>
+    `<span class="dot" style="background:${v.ok ? "#0ca30c" : "#d03b3b"}"></span>${esc(k)}`).join(" &nbsp; ") : "";
+  $("foot").innerHTML = `
+    <div>数据源状态:${src || "—"}</div>
+    <div>数据来源:OpenRouter(模型目录 / Token 排行)· npm registry · pypistats · Google News RSS · 各播客官方 RSS · Yahoo Finance(EOD)。涨跌配色为红涨绿跌,并始终带 ▲▼ 符号。</div>
+    <div>个人自用信息聚合页,数据来自公开接口、可能滞后或有误,不构成任何投资建议。改关键词 / 包名 / 标的 / 播客源:编辑仓库里的 <b>config.json</b>。</div>`;
+}
+
+/* ================= 入口 ================= */
+async function loadData() {
+  if (window.__DATA__) return window.__DATA__;
+  const names = ["meta", "openrouter", "downloads", "news", "quotes", "podcasts"];
+  const out = {};
+  await Promise.all(names.map(async n => {
+    try {
+      const r = await fetch("./data/" + n + ".json", { cache: "no-store" });
+      out[n] = r.ok ? await r.json() : null;
+    } catch { out[n] = null; }
+  }));
+  return out;
+}
+loadData().then(d => {
+  renderStamp(d.meta);
+  renderTiles(d);
+  renderTokens(d.openrouter, 6);
+  renderNewModels(d.openrouter);
+  renderApps(d.openrouter);
+  renderSdk(d.downloads);
+  renderQuotes(d.quotes);
+  renderNews(d.news);
+  renderPods(d.podcasts);
+  renderFoot(d.meta);
+}).catch(e => {
+  $("stamp").textContent = "数据加载失败:" + e;
+});
+</script>
+</body>
+</html>
