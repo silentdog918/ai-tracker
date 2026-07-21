@@ -9,7 +9,7 @@
 | 开发者生态 | npm / PyPI 主流 AI SDK 下载量(7 日滚动) | npm registry / pypistats | 免费 |
 | 核心标的 | AI 产业链美股 EOD 收盘价、1D/5D/20D、60 日走势 | Yahoo Finance | 免费 |
 | 产业链新闻 | 按"算力/模型厂商/应用/融资"分类的近 7 天新闻 | Google News RSS | 免费 |
-| 播客 | BG2 / All-In / Invest Like the Best / Dwarkesh / Latent Space / 硅谷101 / OnBoard! 最新节目 | 各播客官方 RSS | 免费 |
+| 播客 | BG2 / All-In / Invest Like the Best / Dwarkesh / Latent Space / 硅谷101 / 面基 最新节目 | 各播客官方 RSS(被拦时自动走 iTunes 备用通道) | 免费 |
 
 整体架构:**GitHub Actions 每天定时抓数 → 提交 JSON 到仓库 → GitHub Pages 托管静态页**。
 没有服务器、没有数据库、零依赖(纯 Python 标准库),月成本 0 元。
