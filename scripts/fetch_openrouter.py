@@ -21,40 +21,14 @@ def _load_previous():
         return None
 
 
-def _price_per_m(m, k):
-    try:
-        return round(float(m["pricing"][k]) * 1e6, 3)
-    except Exception:
-        return None
-
-
 def run():
     cfg = load_config().get("openrouter", {})
     key = os.environ.get("OPENROUTER_API_KEY", "").strip()
     out = {"generated_at": now_iso(), "has_key": bool(key)}
 
-    # ---- 公开: 模型目录 ----
+    # ---- 公开: 模型目录(仅取总数,用于缺 key 时的提示文案) ----
     d = get_json(API + "/models")
-    models = d.get("data", [])
-    out["model_count"] = len(models)
-
-    def _real_model(m):
-        # 过滤 Auto Router 之类的伪模型(定价为负)
-        p = _price_per_m(m, "prompt")
-        return p is None or p >= 0
-
-    newest = sorted(
-        (m for m in models if _real_model(m)),
-        key=lambda m: m.get("created") or 0, reverse=True,
-    )[:12]
-    out["new_models"] = [{
-        "id": m.get("id"),
-        "name": m.get("name") or m.get("id"),
-        "created": m.get("created"),
-        "prompt_usd_per_m": _price_per_m(m, "prompt"),
-        "completion_usd_per_m": _price_per_m(m, "completion"),
-        "context": m.get("context_length"),
-    } for m in newest]
+    out["model_count"] = len(d.get("data", []))
 
     # ---- 需 key: 每日 token 排行 ----
     rankings_status = "缺 OPENROUTER_API_KEY,已跳过"

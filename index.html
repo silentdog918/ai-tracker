@@ -117,14 +117,13 @@
 
   <header class="site">
     <h1>AI 商业化景气度追踪</h1>
-    <div class="tagline">Token 消耗 · 开发者生态 · 产业链新闻 · 核心标的 —— 需求侧与供给侧的高频信号,自用版</div>
+    <div class="tagline">Token 消耗 · 核心标的 · 订阅研报 · 产业链新闻 —— 需求侧与供给侧的高频信号,自用版</div>
     <div class="stamp" id="stamp">数据加载中…</div>
   </header>
 
   <nav class="top">
     <a href="#pulse">速览</a>
     <a href="#tokens">Token 景气度</a>
-    <a href="#sdk">开发者生态</a>
     <a href="#quotes">核心标的</a>
     <a href="#subs">订阅研报</a>
     <a href="#news">产业链新闻</a>
@@ -142,29 +141,10 @@
       <div id="tokenArea"></div>
     </div>
     <div style="height:16px"></div>
-    <div class="grid2">
-      <div class="card">
-        <h2>新上架模型</h2>
-        <div class="sub">OpenRouter 最新收录 · 关注价格带与上下文长度的<b>供给侧变化</b></div>
-        <div id="newModels"></div>
-      </div>
-      <div class="card">
-        <h2>Top Apps(按 Token 消耗)</h2>
-        <div class="sub">谁在真金白银地烧 Token · <b>应用层商业化的落点</b></div>
-        <div id="appsBox"></div>
-      </div>
-    </div>
-  </section>
-
-  <section id="sdk">
     <div class="card">
-      <h2>SDK 下载量 · 开发者生态</h2>
-      <div class="sub">npm / PyPI 周下载(7 日滚动合计),<b>开发者用脚投票的领先指标</b>;拐点比绝对值重要</div>
-      <div class="grid2">
-        <div><div class="chart" id="npmChart"></div></div>
-        <div><div class="chart" id="pypiChart"></div></div>
-      </div>
-      <div id="sdkTable" style="margin-top:10px"></div>
+      <h2>Top Apps(按 Token 消耗)</h2>
+      <div class="sub">谁在真金白银地烧 Token · <b>应用层商业化的落点</b></div>
+      <div id="appsBox"></div>
     </div>
   </section>
 
@@ -197,7 +177,7 @@
   <section id="podcasts">
     <div class="card">
       <h2>播客更新</h2>
-      <div class="sub">投资视角为主:BG2 / All-In / Invest Like the Best / Dwarkesh / Latent Space / 硅谷101 / OnBoard!</div>
+      <div class="sub">投资视角为主:BG2 / All-In / Invest Like the Best / Dwarkesh / Latent Space / 硅谷101 / 面基</div>
       <div id="podBox"></div>
     </div>
   </section>
@@ -331,17 +311,20 @@ function renderTiles(d) {
     const prev7 = sum(dates.slice(-14, -7).map(x => byDate[x]));
     const wow = prev7 ? (last7/prev7 - 1) * 100 : null;
     tiles.push({ lbl: "OpenRouter 周 Token", val: fmtTok(last7), chip: chip(wow), note: "vs 上周" });
+    // 最新日总量 + 日环比
+    const lastD = dates[dates.length - 1], prevD = dates[dates.length - 2];
+    const lastTotal = byDate[lastD], prevTotal = prevD ? byDate[prevD] : null;
+    const dod = prevTotal ? (lastTotal/prevTotal - 1) * 100 : null;
+    tiles.push({ lbl: "最新日 Token", val: fmtTok(lastTotal), chip: chip(dod), note: "vs 前一日" });
+    // Top1 模型份额
+    const rows = or.daily.filter(r => r.d === lastD && r.m !== "other").sort((a, b) => b.t - a.t);
+    if (rows.length && lastTotal) {
+      const nm = rows[0].m.split("/").pop().replace(/-\d{8}(?=$|:)/, "");
+      tiles.push({ lbl: "Top1 模型份额", val: (rows[0].t/lastTotal*100).toFixed(1) + "%", chip: "", note: nm });
+    }
   } else {
     tiles.push({ lbl: "OpenRouter 周 Token", val: "待接入", chip: "", note: "加 OPENROUTER_API_KEY 解锁" });
   }
-  const dl = d.downloads;
-  const pick = (eco, pkg, label, note) => {
-    const p = dl && dl[eco] && dl[eco][pkg];
-    if (p) tiles.push({ lbl: label, val: fmtWan(p.last7), chip: chip(p.wow_pct), note });
-  };
-  pick("pypi", "openai", "PyPI · openai 周下载", "应用开发主力");
-  pick("pypi", "vllm", "PyPI · vllm 周下载", "推理基建信号");
-  pick("npm", "@anthropic-ai/sdk", "npm · anthropic 周下载", "Claude 生态");
   const q = d.quotes && d.quotes.quotes;
   const pickQ = sym => {
     if (q && q[sym]) tiles.push({ lbl: sym + " · " + (q[sym].name || ""), val: q[sym].price.toLocaleString(), chip: chip(q[sym].chg5d, 2), note: "5 日涨跌" });
@@ -428,25 +411,6 @@ function renderTokens(or, topN) {
     <tbody>${rows}</tbody></table>`;
 }
 
-function renderNewModels(or) {
-  const box = $("newModels");
-  if (!or || !or.new_models || !or.new_models.length) { box.innerHTML = '<div class="empty">暂无数据</div>'; return; }
-  const rows = or.new_models.slice(0, 10).map(m => {
-    const d = m.created ? new Date(m.created * 1000) : null;
-    const ds = d ? `${d.getMonth()+1}/${d.getDate()}` : "—";
-    const price = (m.prompt_usd_per_m != null && m.completion_usd_per_m != null)
-      ? `$${m.prompt_usd_per_m} / $${m.completion_usd_per_m}` : "—";
-    const ctx = m.context
-      ? (m.context >= 1e6
-          ? (m.context/1e6).toFixed(1).replace(/\.0$/, "") + "M"
-          : Math.round(m.context/1000) + "K")
-      : "—";
-    return `<tr><td style="color:var(--muted)">${ds}</td><td>${esc(m.name)}</td>
-      <td class="r" title="输入/输出 每百万 token 美元">${price}</td><td class="r">${ctx}</td></tr>`;
-  }).join("");
-  box.innerHTML = `<table><thead><tr><th>日期</th><th>模型</th><th class="r">$/M tok(入/出)</th><th class="r">上下文</th></tr></thead><tbody>${rows}</tbody></table>`;
-}
-
 function renderApps(or) {
   const box = $("appsBox");
   const raw = or && or.apps_raw;
@@ -466,48 +430,6 @@ function renderApps(or) {
   }).join("");
   box.innerHTML = `<table><thead><tr><th class="r">#</th><th>应用</th><th class="r">Token</th>
     <th class="r">请求数</th><th class="r">Tok/请求</th></tr></thead><tbody>${rows}</tbody></table>`;
-}
-
-function renderSdk(dl) {
-  if (!dl) {
-    $("npmChart").outerHTML = '<div class="empty">下载量数据未抓到</div>';
-    $("pypiChart").remove();
-    return;
-  }
-  const mk = (elId, eco, title) => {
-    const pkgs = Object.keys(dl[eco] || {});
-    if (!pkgs.length) { $(elId).outerHTML = `<div class="empty">${title} 无数据</div>`; return; }
-    const opt = baseOpt();
-    opt.color = SERIES;
-    opt.title = { text: title, textStyle: { color: "#c3c2b7", fontSize: 13, fontWeight: 600 }, left: 4, top: 2 };
-    const r0 = rolling7(dl[eco][pkgs[0]].series);
-    opt.xAxis.data = r0.map(p => p.d);
-    opt.yAxis.axisLabel.formatter = v => fmtWan(v);
-    opt.tooltip.formatter = ps => {
-      const rows = [...ps].sort((a,b) => (b.value||0)-(a.value||0)).map(p =>
-        `${p.marker} ${esc(p.seriesName)} &nbsp; <b>${fmtWan(p.value)}</b>`).join("<br>");
-      return `<b>${ps[0].axisValue}</b>(7日合计)<br>${rows}`;
-    };
-    opt.series = pkgs.map(p => ({
-      name: p, type: "line", showSymbol: false, lineStyle: { width: 2 },
-      emphasis: { focus: "series" },
-      data: rolling7(dl[eco][p].series).map(x => x.v),
-    }));
-    makeChart($(elId), opt);
-  };
-  mk("npmChart", "npm", "npm(JS 生态)");
-  mk("pypiChart", "pypi", "PyPI(Python 生态)");
-
-  const row = (eco, p) => {
-    const d = dl[eco][p];
-    return `<tr><td>${esc(p)}</td><td style="color:var(--muted)">${eco}</td>
-      <td class="r">${fmtWan(d.last7)}</td><td class="r">${fmtWan(d.prev7)}</td>
-      <td class="r">${chip(d.wow_pct)}</td></tr>`;
-  };
-  const rows = [...Object.keys(dl.npm || {}).map(p => row("npm", p)),
-                ...Object.keys(dl.pypi || {}).map(p => row("pypi", p))].join("");
-  $("sdkTable").innerHTML = `<table><thead><tr><th>包</th><th>生态</th>
-    <th class="r">本周下载</th><th class="r">上周</th><th class="r">周环比</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 function renderQuotes(qd) {
@@ -603,14 +525,14 @@ function renderFoot(meta) {
     `<span class="dot" style="background:${v.ok ? "#0ca30c" : "#d03b3b"}"></span>${esc(k)}`).join(" &nbsp; ") : "";
   $("foot").innerHTML = `
     <div>数据源状态:${src || "—"}</div>
-    <div>数据来源:OpenRouter(模型目录 / Token 排行)· npm registry · pypistats · Google News RSS · 各播客官方 RSS · Yahoo Finance(EOD)。涨跌配色为红涨绿跌,并始终带 ▲▼ 符号。</div>
+    <div>数据来源:OpenRouter(Token 排行)· Google News RSS 及各机构官方 RSS · GeoScope · 各播客官方 RSS · Yahoo Finance(EOD)。涨跌配色为红涨绿跌,并始终带 ▲▼ 符号。</div>
     <div>个人自用信息聚合页,数据来自公开接口、可能滞后或有误,不构成任何投资建议。改关键词 / 包名 / 标的 / 播客源:编辑仓库里的 <b>config.json</b>。</div>`;
 }
 
 /* ================= 入口 ================= */
 async function loadData() {
   if (window.__DATA__) return window.__DATA__;
-  const names = ["meta", "openrouter", "downloads", "news", "quotes", "podcasts", "subscriptions"];
+  const names = ["meta", "openrouter", "news", "quotes", "podcasts", "subscriptions"];
   const out = {};
   await Promise.all(names.map(async n => {
     try {
@@ -624,9 +546,7 @@ loadData().then(d => {
   renderStamp(d.meta);
   renderTiles(d);
   renderTokens(d.openrouter, 6);
-  renderNewModels(d.openrouter);
   renderApps(d.openrouter);
-  renderSdk(d.downloads);
   renderQuotes(d.quotes);
   renderSubs(d.subscriptions);
   renderNews(d.news);

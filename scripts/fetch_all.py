@@ -11,7 +11,6 @@ from common import now_iso, save_json  # noqa: E402
 
 MODULES = [
     ("openrouter", "fetch_openrouter"),
-    ("downloads", "fetch_downloads"),
     ("news", "fetch_news"),
     ("quotes", "fetch_quotes"),
     ("podcasts", "fetch_podcasts"),

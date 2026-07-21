@@ -20,11 +20,6 @@
     ],
     "max_total_with_feeds": 130
   },
-  "sdk": {
-    "history_days": 90,
-    "npm": ["openai", "@anthropic-ai/sdk", "@google/genai", "ai", "langchain"],
-    "pypi": ["openai", "anthropic", "google-genai", "langchain", "litellm", "vllm"]
-  },
   "quotes": {
     "groups": [
       { "name": "算力链", "symbols": ["NVDA", "AVGO", "TSM", "VRT"] },
