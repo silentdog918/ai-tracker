@@ -10,7 +10,15 @@
       { "q": "\"AI revenue\" OR \"AI monetization\" OR \"AI ARR\" OR \"enterprise AI adoption\" OR Copilot", "category": "应用与商业化", "lang": "en" },
       { "q": "\"AI startup\" funding OR \"AI IPO\" OR \"AI valuation\"", "category": "融资与IPO", "lang": "en" },
       { "q": "大模型 OR AI算力 OR AI芯片 OR 智算中心", "category": "中文要闻", "lang": "zh" }
-    ]
+    ],
+    "feeds": [
+      { "name": "Apollo · Daily Spark", "url": "https://www.apolloacademy.com/category/the-daily-spark/feed/", "category": "宏观与机构" },
+      { "name": "美联储 · 演讲", "url": "https://www.federalreserve.gov/feeds/speeches.xml", "category": "宏观与机构" },
+      { "name": "美联储 · 公告", "url": "https://www.federalreserve.gov/feeds/press_all.xml", "category": "宏观与机构", "max_items": 6 },
+      { "name": "BIS · 研究", "url": "https://www.bis.org/doclist/wppubls.rss", "category": "宏观与机构" },
+      { "name": "NBER · 新论文", "url": "https://back.nber.org/rss/new.xml", "category": "宏观与机构", "ua": "rss-reader/1.0", "max_items": 6 }
+    ],
+    "max_total_with_feeds": 130
   },
   "sdk": {
     "history_days": 90,

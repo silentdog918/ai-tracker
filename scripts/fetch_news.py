@@ -10,7 +10,7 @@ import time
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
-from datetime import timezone
+from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from urllib.parse import quote
 
@@ -52,6 +52,66 @@ def _decode_gnews(gid):
         return url if isinstance(url, str) and url.startswith("http") else None
     except Exception:
         return None
+
+
+def _local(tag):
+    return tag.split("}")[-1]
+
+
+def _parse_direct_feed(xml_bytes, feed_name, category):
+    """通用 RSS 解析,兼容 RSS 2.0 / RSS 1.0(RDF,如 BIS)/ 命名空间差异。"""
+    root = ET.fromstring(xml_bytes)
+    items = []
+    for el in root.iter():
+        if _local(el.tag) != "item":
+            continue
+        title = link = pub = None
+        for c in el:
+            ln = _local(c.tag)
+            if ln == "title":
+                title = (c.text or "").strip()
+            elif ln == "link" and not link:
+                link = (c.text or "").strip()
+            elif ln in ("pubDate", "date") and not pub:
+                pub = (c.text or "").strip()
+        if not title or not link:
+            continue
+        published = None
+        if pub:
+            try:
+                dt = parsedate_to_datetime(pub)
+            except Exception:
+                try:
+                    dt = datetime.fromisoformat(pub.replace("Z", "+00:00"))
+                except Exception:
+                    dt = None
+            if dt is not None:
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                published = dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        items.append({
+            "title": title,
+            "link": link,
+            "gid": None,  # 直连源,无需解码
+            "source": feed_name,
+            "published": published,  # 缺日期的源(如 Apollo/NBER)之后补"首见时间"
+            "category": category,
+            "lang": "en",
+        })
+    return items
+
+
+def _load_prev_published():
+    """上次抓取里 链接->时间戳 的映射,给无日期的 feed 条目沿用"首见时间"。"""
+    prev = {}
+    try:
+        with open(os.path.join(DATA_DIR, "news.json"), encoding="utf-8") as f:
+            for it in json.load(f).get("items", []):
+                if it.get("link") and it.get("published"):
+                    prev[it["link"]] = it["published"]
+    except Exception:
+        pass
+    return prev
 
 
 def _load_link_cache():
@@ -124,8 +184,37 @@ def run():
                 continue
             seen.add(key)
             items.append(it)
+    # 直连 RSS 源(邮件订阅的官方渠道):Apollo / 美联储 / BIS / NBER 等
+    cutoff = (datetime.now(timezone.utc)
+              - timedelta(days=window)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    prev_pub = _load_prev_published()
+    now_dt = datetime.now(timezone.utc)
+    for feed in cfg.get("feeds", []):
+        try:
+            h = dict(BROWSER_HEADERS)
+            if feed.get("ua"):
+                h["User-Agent"] = feed["ua"]
+            h["Accept"] = "application/rss+xml, application/xml;q=0.9, */*;q=0.8"
+            got = _parse_direct_feed(http_get(feed["url"], headers=h),
+                                     feed["name"], feed["category"])
+            # 无日期条目:沿用上次的首见时间,新条目打当前时间(按feed内顺序微调保持排序)
+            for idx, g in enumerate(got):
+                if not g["published"]:
+                    g["published"] = prev_pub.get(g["link"]) or (
+                        (now_dt - timedelta(seconds=idx)).strftime("%Y-%m-%dT%H:%M:%SZ"))
+            got = [g for g in got if g["published"] >= cutoff]
+            got.sort(key=lambda x: x["published"], reverse=True)
+            for it in got[: feed.get("max_items", 8)]:
+                key = re.sub(r"\s+", " ", it["title"].lower())[:80]
+                if key in seen:
+                    continue
+                seen.add(key)
+                items.append(it)
+        except Exception as e:
+            fails.append(f"{feed['name']}: {type(e).__name__}")
+
     items.sort(key=lambda x: x["published"], reverse=True)
-    items = items[: cfg.get("max_total", 100)]
+    items = items[: cfg.get("max_total_with_feeds", cfg.get("max_total", 100))]
 
     # 解码为原文直链:缓存命中免请求,新条目限量解码,失败保留 Google 链接兜底
     cache = _load_link_cache()
@@ -152,7 +241,9 @@ def run():
             decode_fail += 1
         time.sleep(0.4)
 
-    categories = list(dict.fromkeys(q["category"] for q in cfg["queries"]))
+    categories = list(dict.fromkeys(
+        [q["category"] for q in cfg["queries"]]
+        + [f["category"] for f in cfg.get("feeds", [])]))
     save_json("news.json", {
         "generated_at": now_iso(),
         "categories": categories,
